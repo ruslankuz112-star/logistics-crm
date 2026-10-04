@@ -81,96 +81,22 @@ const PLANNER_DATA = {
     lipetsk:{murmansk:2350,lavna:2370,spb:1200,novorossiysk:1050,vladivostok:9150},
     kursk:{murmansk:2500,lavna:2520,spb:1350,novorossiysk:1000,vladivostok:9300},
     belgorod:{murmansk:2550,lavna:2570,spb:1400,novorossiysk:950,vladivostok:9350}
-  }
-};
+  },
 
-function updatePlanner() {
-  const from    = document.getElementById('pl-from').value;
-  const mode    = document.getElementById('pl-mode').value;
-  const dest    = document.getElementById('pl-dest').value;
-  const cargo   = document.getElementById('pl-cargo').value;
-  const volume  = parseInt(document.getElementById('pl-volume').value) || 0;
+  /* ============================================================
+     МОРСКИЕ ПЕРЕВОЗКИ
+     ============================================================ */
+  seaPortsFrom: {
+    murmansk:     { name:'Мурманск (ММТП)', code:'RUMMK', deep:'12.35 м', ice:'Незамерзающий' },
+    spb:          { name:'Санкт-Петербург',  code:'RULED', deep:'11.00 м', ice:'Зимой ледоколы' },
+    novorossiysk: { name:'Новороссийск',     code:'RUNVS', deep:'13.50 м', ice:'Незамерзающий' },
+    vladivostok:  { name:'Владивосток',      code:'RUVVO', deep:'13.00 м', ice:'Зимой ледоколы' }
+  },
 
-  const terminal = PLANNER_DATA.terminals[dest];
-  const distance = PLANNER_DATA.distances[from]?.[dest] || 0;
-  const city = PLANNER_DATA.cities[from];
-  const rateData = mode === 'rail' ? PLANNER_DATA.railRates[cargo] : PLANNER_DATA.autoRates[cargo];
-
-  const costPerTon = rateData.rate * distance;
-  const totalCost = costPerTon * volume;
-  const costBn = (totalCost / 1e9).toFixed(2);
-  const unit = mode === 'rail'
-    ? '~' + Math.ceil(volume / 65) + ' вагонов-хопперов'
-    : '~' + Math.ceil(volume / 20) + ' рейсов (20 т)';
-
-  const requiredDocs = terminal.docs.map(function(d) {
-    if (d === 'ГУ-12') return '<span class="doc-required">⚠️ ГУ-12 обязательна</span>';
-    return '<span class="tag amber">' + d + '</span>';
-  }).join(' ');
-
-  document.getElementById('planner-result').innerHTML =
-    '<div class="terminal-card">' +
-      '<div class="tc-head">' +
-        '<div>' +
-          '<div class="tc-name">' + terminal.name + '</div>' +
-          '<div class="tc-code">Код ТЛЦ: ' + terminal.code + '</div>' +
-        '</div>' +
-        '<span class="tag green">' + (mode === 'rail' ? '🚂 ЖД' : '🚛 Авто') + '</span>' +
-      '</div>' +
-      '<div class="tc-row"><span class="k">Оператор</span><span class="v">' + terminal.operator + '</span></div>' +
-      '<div class="tc-row"><span class="k">Адрес</span><span class="v">' + terminal.address + '</span></div>' +
-      '<div class="tc-row"><span class="k">Тип</span><span class="v">' + terminal.type + '</span></div>' +
-      '<div class="tc-row"><span class="k">Мощность</span><span class="v">' + terminal.capacity + '</span></div>' +
-      '<div class="tc-row"><span class="k">Контейнеры</span><span class="v">' + terminal.container + '</span></div>' +
-      '<div class="tc-row"><span class="k">Причалы</span><span class="v">' + terminal.platforms + '</span></div>' +
-      '<div class="tc-row"><span class="k">Склады</span><span class="v">' + terminal.warehouses + '</span></div>' +
-      '<div class="tc-row"><span class="k">Краны</span><span class="v">' + terminal.cranes + '</span></div>' +
-      '<div class="tc-row"><span class="k">Рефрозетки</span><span class="v">' + terminal.reefer + '</span></div>' +
-      '<div class="tc-row"><span class="k">ЖД-станция</span><span class="v">' + terminal.rail + '</span></div>' +
-    '</div>' +
-    '<div class="route-summary">' +
-      '<div class="rs-title">📋 Сводка маршрута</div>' +
-      '<div class="rs-line"><b>' + city.name + '</b> (' + city.station + ') → <b>' + terminal.name + '</b></div>' +
-      '<div class="rs-line">Расстояние: <b>' + distance.toLocaleString('ru-RU') + ' км</b></div>' +
-      '<div class="rs-line">Транспорт: <b>' + (mode === 'rail' ? 'Железная дорога' : 'Автотранспорт') + '</b></div>' +
-      '<div class="rs-line">' + unit + '</div>' +
-      '<div class="rs-line">Ставка: <b>' + rateData.rate + ' ₽/т·км</b> <span style="color:var(--muted)">(' + rateData.note + ')</span></div>' +
-      '<div class="rs-line" style="margin-top:10px;font-size:16px">Стоимость перевозки: <b>' + costPerTon.toLocaleString('ru-RU') + ' ₽/т</b></div>' +
-      '<div class="rs-line" style="font-size:16px">Итого за ' + volume.toLocaleString('ru-RU') + ' т: <b>' + costBn + ' млрд ₽</b></div>' +
-    '</div>' +
-    '<div style="margin-top:14px">' +
-      '<div style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.8px;font-weight:800;margin-bottom:8px">Обязательные документы</div>' +
-      requiredDocs +
-      (terminal.gu12 ? '<div style="font-size:12px;color:var(--muted);margin-top:8px">ГУ-12 — заявка на перевозку, оформляется через АС ЭТРАН не позднее чем за 10 дней до отправки.</div>' : '') +
-    '</div>' +
-    '<div class="callout" style="margin-top:14px;font-size:12.5px"><b>Примечание:</b> ' + terminal.note + '</div>';
-
-  renderPortLoads();
-}
-
-function renderPortLoads() {
-  const html = Object.values(PLANNER_DATA.ports).map(function(p) {
-    const color = p.load >= 80 ? 'var(--red)' : p.load >= 60 ? 'var(--accent)' : 'var(--green)';
-    const label = p.load >= 80 ? 'Критическая' : p.load >= 60 ? 'Высокая' : 'Нормальная';
-    return '<div class="port-load">' +
-      '<span class="pl-name">' + p.name + '</span>' +
-      '<span style="font-size:11px;color:' + color + ';font-weight:700;min-width:80px">' + label + '</span>' +
-      '<div class="pl-bar"><div class="pl-fill" style="width:' + p.load + '%;background:' + color + '"></div></div>' +
-      '<span class="pl-pct" style="color:' + color + '">' + p.load + '%</span>' +
-      '<span style="font-size:11px;color:var(--muted);min-width:40px">' + p.trend + '</span>' +
-    '</div>';
-  }).join('');
-  document.getElementById('port-loads').innerHTML = html;
-}
-
-async function renderPlanner() {
-  const r = await fetch('/planner.html');
-  document.getElementById('content').innerHTML = await r.text();
-  updatePlanner();
-  setInterval(function() {
-    Object.values(PLANNER_DATA.ports).forEach(function(p) {
-      p.load = Math.max(10, Math.min(95, p.load + Math.floor(Math.random() * 5 - 2)));
-    });
-    renderPortLoads();
-  }, 30000);
-}
+  seaPortsTo: {
+    /* Турция */
+    istanbul:  { name:'Стамбул (Амбарли)', country:'Турция', code:'TRIST', region:'Мармара' },
+    mersin:    { name:'Мерсин',            country:'Турция', code:'TRMER', region:'Средиземное' },
+    izmir:     { name:'Измир (Алсанджак)', country:'Турция', code:'TRIZM', region:'Эгейское' },
+    gemlik:    { name:'Гемлик',            country:'Турция', code:'TRGEM', region:'Мармара' },
+    iskenderun:{ name:'Искендерун

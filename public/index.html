@@ -147,6 +147,7 @@ border-radius:10px;padding:12px 18px;font-size:13px;font-weight:600;box-shadow:0
   <aside class="sidebar">
     <div class="sb-head"><div class="logo">🚛</div><div>LogiCRM</div></div>
     <nav class="nav">
+      <div class="nav-item" data-view="maritime"><span>🚢</span> Морской транспорт</div>
       <div class="nav-item active" data-view="dashboard"><span>📊</span> Дашборд</div>
       <div class="nav-item" data-view="shipments"><span>📦</span> Партии</div>
       <div class="nav-item" data-view="tasks"><span>✅</span> Задачи</div>
@@ -252,14 +253,14 @@ document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=
 }));
 
 async function render(){
-  const titles={dashboard:'Дашборд',shipments:'Партии',tasks:'Задачи',chat:'Чат'};
+ const titles={dashboard:'Дашборд',shipments:'Партии',tasks:'Задачи',chat:'Чат',planner:'Планировщик маршрутов',maritime:'Морской транспорт'};
   $('#pg-title').textContent=titles[VIEW]||'Дашборд';
   try{
     if(VIEW==='dashboard') await renderDashboard();
     else if(VIEW==='shipments') await renderShipments();
     else if(VIEW==='tasks') await renderTasks();
     else if(VIEW==='chat') await renderChat();
-    else if(VIEW==='planner') await renderPlanner();
+        else if(VIEW==='maritime') await renderMaritime();
   }catch(e){ $('#content').innerHTML=`<div class="card" style="color:var(--red)">Ошибка: ${esc(e.message)}</div>`; }
 }
 async function reload(){ await render(); toast('Обновлено','g'); }
@@ -421,5 +422,9 @@ async function saveTask(){
   showLogin();
 })();
 <script src="planner.js"></script>
+<!-- Leaflet для карты -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="maritime.js"></script>
 </body>
 </html>

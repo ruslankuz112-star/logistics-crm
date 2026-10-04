@@ -56,7 +56,93 @@ app.get('/health', async (req, res) => {
   });
 });
 
-app.get('/api/health', (req, res) => res.json({ status: 'ok', ts: Date.now() }));
+app.get/* ============================================================
+   AIS STREAM PROXY — релей AISStream.io для браузера
+   ============================================================ */
+const WebSocket = require('ws');
+
+const AISSTREAM_URL = 'wss://stream.aisstream.io/v0/stream';
+const AISSTREAM_KEY = process.env.AISSTREAM_KEY || '';
+
+// Зона по умолчанию: Баренцево море + Турция + Средиземноморье
+const AIS_BOUNDING_BOXES = [
+  [[41.0, 27.0], [70.0, 45.0]],   // Баренцево + Северная Атлантика
+  [[35.0, 25.0], [45.0, 40.0]],   // Турция + Восточное Средиземноморье
+  [[55.0, 20.0], [62.0, 32.0]]    // Балтика
+];
+
+// WebSocket-сервер встроен в Express через upgrade
+const { WebSocketServer } = require('ws');
+const wss = new WebSocketServer({ noServer: true });
+
+wss.on('connection', (client) => {
+  console.log('🌊 AIS клиент подключён');
+
+  if (!AISSTREAM_KEY) {
+    client.send(JSON.stringify({ type: 'error', message: 'AISSTREAM_KEY не настроен на сервере' }));
+    client.close();
+    return;
+  }
+
+  const upstream = new WebSocket(AISSTREAM_URL);
+
+  upstream.on('open', () => {
+    upstream.send(JSON.stringify({
+      APIKey: AISSTREAM_KEY,
+      BoundingBoxes: AIS_BOUNDING_BOXES,
+      FilterMessageTypes: ['PositionReport', 'ShipStaticData']
+    }));
+  });
+
+  upstream.on('message', (data) => {
+    try {
+      const msg = JSON.parse(data.toString());
+      const meta = msg.MetaData || msg.metadata || {};
+      const body = msg.Message?.PositionReport || msg.Message?.ShipStaticData || msg.message?.PositionReport;
+
+      if (!body || !meta.latitude) return;
+
+      client.send(JSON.stringify({
+        type: 'vessel',
+        mmsi: String(meta.MMSI || body.UserID || ''),
+        name: (msg.Message?.ShipStaticData?.Name || meta.ShipName || '').trim(),
+        lat: meta.latitude,
+        lon: meta.longitude,
+        course: body.CourseOverGround ?? body.TrueHeading ?? 0,
+        speed: body.SpeedOverGround ?? 0,
+        type: msg.Message?.ShipStaticData?.Type || 'Unknown'
+      }));
+    } catch (e) { /* пропускаем битые */ }
+  });
+
+  upstream.on('close', () => client.close());
+  upstream.on('error', (err) => {
+    console.error('AIS upstream error:', err.message);
+    client.send(JSON.stringify({ type: 'error', message: err.message }));
+    client.close();
+  });
+
+  client.on('close', () => {
+    console.log('🌊 AIS клиент отключён');
+    if (upstream.readyState === WebSocket.OPEN) upstream.close();
+  });
+});
+
+// Перехват upgrade-запроса для /api/ais-stream
+const originalListen = app.listen.bind(app);
+app.listen = function(...args) {
+  const server = originalListen(...args);
+  server.on('upgrade', (req, socket, head) => {
+    if (req.url === '/api/ais-stream') {
+      wss.handleUpgrade(req, socket, head, (ws) => {
+        wss.emit('connection', ws, req);
+      });
+    } else {
+      socket.destroy();
+    }
+  });
+  return server;
+};('/api/health', (req, res) => res.json({ status: 'ok', ts: Date.now() }));
 
 app.post('/api/auth/register', async (req, res) => {
   const { email, password, name } = req.body || {};

@@ -1,0 +1,68 @@
+<style>
+.maritime-toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding:14px;background:var(--bg2,#0f1720);border:1px solid var(--line);border-radius:12px}
+.maritime-toolbar button{padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;background:var(--panel2);color:var(--text);border:1px solid var(--line);cursor:pointer;transition:.15s}
+.maritime-toolbar button:hover{background:var(--line)}
+.maritime-toolbar button.active{background:var(--accent);color:#111;border-color:var(--accent)}
+.maritime-toolbar .stats{margin-left:auto;font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:14px}
+.maritime-toolbar .stats .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:5px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+#map-wrap{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px}
+#marine-map{height:560px;width:100%;background:#0a1622}
+.port-panel{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:16px}
+.port-card{background:var(--bg2,#0f1720);border:1px solid var(--line);border-radius:11px;padding:14px;transition:.15s;cursor:pointer}
+.port-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.port-card .pc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.port-card .pc-name{font-weight:800;font-size:14px}
+.port-card .pc-code{font-family:monospace;font-size:11px;color:var(--muted)}
+.port-card .pc-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0}
+.port-card .pc-row .k{color:var(--muted)}
+.vessel-list{max-height:300px;overflow-y:auto;margin-top:14px;border:1px solid var(--line);border-radius:10px}
+.vessel-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line);font-size:12.5px;cursor:pointer;transition:.1s}
+.vessel-item:hover{background:var(--panel2)}
+.vessel-item .v-flag{font-size:16px}
+.vessel-item .v-name{flex:1;font-weight:700}
+.vessel-item .v-meta{color:var(--muted);font-size:11px}
+.leaflet-popup-content-wrapper{background:var(--panel);color:var(--text);border-radius:10px;border:1px solid var(--line)}
+.leaflet-popup-tip{background:var(--panel);border:1px solid var(--line)}
+.leaflet-popup-content{margin:12px 14px}
+.leaflet-container a.leaflet-popup-close-button{color:var(--muted)}
+.info-panel{background:var(--bg2,#0f1720);border:1px solid var(--line);border-radius:11px;padding:16px;margin-top:16px}
+.info-panel h4{font-size:12px;color:var(--accent);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+</style>
+
+<div class="maritime-toolbar">
+  <button id="btn-ports" class="active" onclick="toggleLayer('ports')">🏢 Порты</button>
+  <button id="btn-routes" onclick="toggleLayer('routes')">🧭 Маршруты</button>
+  <button id="btn-vessels" onclick="toggleLayer('vessels')">🚢 Суда (live)</button>
+  <button id="btn-marine" onclick="toggleLayer('marine')">🌊 Морская карта</button>
+  <div class="stats">
+    <span><span class="dot"></span>AIS: <b id="ais-status">отключено</b></span>
+    <span>Судов: <b id="vessel-count">0</b></span>
+  </div>
+</div>
+
+<div id="map-wrap">
+  <div id="marine-map"></div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <h3>⚓ Порты и терминалы</h3>
+      <div style="color:var(--muted);font-size:12px;margin-top:3px">Кликните на карточку, чтобы центрировать карту</div>
+    </div>
+  </div>
+  <div class="port-panel" id="port-panel"></div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>🚢 Суда в акватории (live)</h3>
+    <span id="vessel-hint" style="color:var(--muted);font-size:12px">Требуется подключение к AIS</span>
+  </div>
+  <div class="vessel-list" id="vessel-list">
+    <div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">
+      Нажмите «Суда (live)» выше, чтобы подключиться к потоку AIS
+    </div>
+  </div>
+</div>
